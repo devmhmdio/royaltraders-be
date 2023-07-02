@@ -1,10 +1,9 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template import loader, RequestContext
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_exempt
 from django.contrib.staticfiles.storage import staticfiles_storage
 import json
-import magic
 
 from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView
 
@@ -12,13 +11,13 @@ import qrcode
 from PIL import Image
 
 from DB.models import *
-from DB.serializers import ProductsSerializer
+from DB.serializers import ProductsSerializer, WholeSellerSerializer
 
 def index(request):
     template = loader.get_template('login.html')
     return HttpResponse(template.render({}, request))
 
-@csrf_protect
+@csrf_exempt
 def login(request):
     # print(request.user_agent.device)
     # x =  request.META
@@ -35,10 +34,10 @@ def login(request):
     except Exception as e:
         return HttpResponse(e)
 
-@csrf_protect
-def addProductForm(request):
-    template = loader.get_template('addProduct.html')
-    return HttpResponse(template.render({'file':''}, request))
+# @csrf_protect
+# def addProductForm(request):
+#     template = loader.get_template('addProduct.html')
+#     return HttpResponse(template.render({'file':''}, request))
 
 def addWholeseller(request):
     print(request.user_agent.device)
@@ -53,7 +52,7 @@ def addWholeseller(request):
     except Exception as e:
         return HttpResponse(e)
     
-@csrf_protect
+@csrf_exempt
 def insertProduct(request):
     vars = request.POST
     p_id = vars['pname'][:2] + '-' + vars['cat'][:2] + '-' + str(hash(vars['pname'] + vars['cat'] + vars['subcat']))[:4]
@@ -124,3 +123,22 @@ class ProductDetailView(RetrieveAPIView):
 class ProductsView(ListAPIView):
     queryset = Products.objects.all()
     serializer_class = ProductsSerializer
+
+def delete_product(request):
+    res = Products.objects.get(product_id = request.GET['p_id']).delete()
+    return HttpResponse(True)
+
+def update_product(request):
+    vars = request.POST
+    res = Products.objects.get(product_id = vars['p_id'])
+    res.product_name = vars['pname']
+    res.cat = vars['cat']
+    res.subcat = vars['subcat']
+    res.ret_price = vars['retp']
+    res.ws_price = vars['whp']
+    res.save()
+    return HttpResponse(True)
+
+class WholeSellersView(ListAPIView):
+    queryset = WholeSellers.objects.all()
+    serializer_class = WholeSellerSerializer
